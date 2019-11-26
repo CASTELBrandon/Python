@@ -14,7 +14,7 @@ ser = serial.Serial(
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS,
-    timeout=0   
+    timeout=0
    )
 
 
@@ -27,18 +27,17 @@ master = 0
 # Send Channels through DMX
 def dmxfonction(dmxbuffer):
     global universize
-    global master    
-    while True:
-        tosend=dmxbuffer                      
-        dmxbuffer[1] = master            
-        #print(tosend)
-        ser.break_condition = True
-        time.sleep(0.001)               # Send Break    
-        ser.break_condition = False
-        #ser.write(struct.pack('<B', 0)) # Start Code
-        for i in range(0, universize, 1):
-            ser.write(struct.pack('<B', tosend[i]))
-                
+    global master
+    tosend=dmxbuffer
+    dmxbuffer[1] = master
+    #print(tosend)
+    ser.break_condition = True
+    time.sleep(0.001)               # Send Break
+    ser.break_condition = False
+    #ser.write(struct.pack('<B', 0)) # Start Code
+    for i in range(0, universize, 1):
+        ser.write(struct.pack('<B', tosend[i]))
+
 
 processThread = threading.Thread(target=dmxfonction, args=(dmxbuffer,))
 processThread.start()
@@ -117,7 +116,7 @@ def initialisation_configuration(client):
                     reponse = int(input())
                     if reponse == 1:
                         print("Configuration numero", numero_configuration, "chargee !")
-                        #envoi_fichier_page(numero_configuration, client)                        
+                        #envoi_fichier_page(numero_configuration, client)
                         enregistreur_configuration(numero_configuration)
                         return (True)  # retour dans connectionEtEnvoi
 
@@ -202,7 +201,7 @@ def on_message(client, userdata, message):
 
 """Cette fonction traite les messages recus. Ils proviennent directement de la fonction on_message().
 Elle effectue des actions suivant la nomenclature du message.
-Le message commence toujours pas C0 ou C1. 
+Le message commence toujours pas C0 ou C1.
 C0 quand c'est le code python qui est l'expediteur, C1 quand c'est la page.
 Voici les differentes actions :
             - Mast = action sur le master
@@ -210,8 +209,8 @@ Voici les differentes actions :
             - Rese = demande de reset
             - Conf = action sur une configuration
             - Cxxx.V = action sur un fader (valeur)
-            - Cxxx.N = action sur un fader (nom)   
-            - Init = pracision a la page que l'information envoyee fait partie d'un cycle d'initialisation                          
+            - Cxxx.N = action sur un fader (nom)
+            - Init = pracision a la page que l'information envoyee fait partie d'un cycle d'initialisation
 ------------------------------------------------------------------------------------------------------
 @param client : pour pouvoir utiliser les fonctions propres a la librairire MQTT.
 @param message : le message qui provient directement de la fonction on_message."""
@@ -229,7 +228,7 @@ def traitement(client, message):
 
     #/*** MESSAGE DEMANDE DE RAFRAICHISSEMENT ***/
     #lecture du fichier de la configuration demandee et envoit de son contenu
-    elif message.find("Syst") != -1:        
+    elif message.find("Syst") != -1:
         univers = fdf.changement_fichier(configuration_actuelle, client)
 
 
@@ -238,7 +237,7 @@ def traitement(client, message):
     elif message.find("Rese") != -1:
         numero_config = message[8]
         initialisation_univers(numero_config, client)
-        
+
 
 
     #/*** MESSAGE CHANGEMENT DE VALEUR DE FADER ***/
@@ -248,8 +247,8 @@ def traitement(client, message):
         nouvelle_valeur = recuperateur_valeur(message)                                     #on recupere la nouvelle valeur du fader dans le message
         fdf.ecriture_fichier(configuration_actuelle, nouvelle_valeur, nom_fader, "Valeur") #on va ecrire cette nouvelle valeur dans le fichier de configuration
         envoyeur_dmx(nom_fader, nouvelle_valeur, "fader")
-        
-        
+
+
 
 
     #/*** MESSAGE CHANGEMENT CONFIGURATION ***/
@@ -266,10 +265,10 @@ def traitement(client, message):
             fdf.changement_fichier(configuration_actuelle, client)                         #on envoit a la table les informations dans le fichier
         else:                   #S'il y a des choses dedans
             print("\nChargement de la configuration numero ", configuration, ".")          #si il y a quelque chose dans le fichier
-            
+
             univers = fdf.changement_fichier(configuration_actuelle, client)               #alors on envoit ses informations a la table
-            
-                    
+
+
 
     #/*** MESSAGE DE CHANGEMENT DE NOM FADER ***/
     #ecriture du nouveau nom du fader dans le fichier de la configuration correspondante
@@ -286,7 +285,7 @@ Puis met a jour le fichier de la configuration actuelle si la valeur d'un fader 
 @param client : pour pouvoir utiliser les fonctions propres a la librairire MQTT."""
 def envoyeur_message_page(message, client):
     client.publish("general", message)
-    #print("Ce message a ete envoye", message)    
+    #print("Ce message a ete envoye", message)
     #/*** SI ON ENVOIT UN MESSAGE QUI CHANGE LA VALEUR D'UN FADER ***/
     if message.find(".V") != -1:
             enregistreur_configuration(configuration_actuelle)
@@ -295,63 +294,63 @@ def envoyeur_message_page(message, client):
             if message.find("Init") == -1:
                 fdf.ecriture_fichier(configuration_actuelle, nouvelle_valeur, nom_fader, "Valeur")#on met a jour le fichier
 
-   
+
 def enregistreur_configuration(configuration):
-    global master    
+    global master
     chemin = ("config/config" + str(configuration) + ".txt")
     with open(chemin, "r") as file:
             texte = file.read()
             master = deformateur_de_valeur(texte[4]+texte[5]+texte[6])
             informations_config[0] = master
-            for i in range(len(texte)):            
-                if texte[i] == "C" and texte[i+1] == "0":                
+            for i in range(len(texte)):
+                if texte[i] == "C" and texte[i+1] == "0":
                     matricule = deformateur_de_valeur(texte[i+1]+texte[i+2]+texte[i+3])
-                    valeur = deformateur_de_valeur(texte[i+4]+texte[i+5]+texte[i+6])                    
-                    informations_config[matricule]= valeur    
+                    valeur = deformateur_de_valeur(texte[i+4]+texte[i+5]+texte[i+6])
+                    informations_config[matricule]= valeur
             for i in range(len(informations_config)):
-                dmxbuffer[i+1] = informations_config[i]                 
-    
-    
+                dmxbuffer[i+1] = informations_config[i]
+
+
 def envoyeur_dmx(matricule, valeur, identification):
     """if idenfication == "master":
         valeur = deformateur_de_valeur(valeur)
-        
+
         dmxbuffer[1] = valeur
         print(dmxbuffer[1])"""
-            
-    #if identification == "fader":        
-    def_matricule = deformateur_de_valeur(matricule[1]+matricule[2]+matricule[3])        
-    def_valeur = deformateur_de_valeur(valeur)                    
+
+    #if identification == "fader":
+    def_matricule = deformateur_de_valeur(matricule[1]+matricule[2]+matricule[3])
+    def_valeur = deformateur_de_valeur(valeur)
     dmxbuffer[def_matricule+1] = def_valeur
-         
-        
-    
-        
-        
-    
- 
-    
-        
-                    
-    
+
+
+
+
+
+
+
+
+
+
+
 def deformateur_de_valeur(valeur):
-    deformatage = ""    
+    deformatage = ""
     for i in range(len(valeur)):
         if valeur[i] != "0":
             deformatage = deformatage + valeur[i]
-            
+
     if valeur[0] + valeur[1] + valeur[2] == "000":
         deformatage = "0"
-        
 
-    if valeur[0] == "0" and valeur[1] != "0" and valeur[2] == "0":        
+
+    if valeur[0] == "0" and valeur[1] != "0" and valeur[2] == "0":
         deformatage = valeur[1] + "0"
-            
+
     #print("le deformatage :", deformatage)
     return int(deformatage)
-            
-    
-    
+
+
+
 """Cette fonction recupere le nom d'un fader dans un message.
 -------------------------------------------------------------
 @param message : le message qui doit etre traite."""
