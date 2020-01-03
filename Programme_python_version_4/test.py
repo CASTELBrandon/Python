@@ -9,15 +9,13 @@ import threading
 
 # Serial Setup for DMX transmission
 ser = serial.Serial(
-    port='/dev/ttyS0',
+    port='/dev/ttyAMA0',
     baudrate = 250000,
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS,
     timeout=0
    )
-
-
 
 # Initialize variable
 universize = 512
@@ -31,7 +29,6 @@ def dmxfonction(dmxbuffer):
     while True:
         dmxbuffer[1] = master
         tosend=dmxbuffer
-        print("Envoi de la valeur tosend : {}".format(tosend[1]))
         ser.break_condition = True
         time.sleep(0.001)               # Send Break
         ser.break_condition = False
@@ -39,17 +36,10 @@ def dmxfonction(dmxbuffer):
         for i in range(0, universize, 1):
             ser.write(struct.pack('<B', tosend[i]))
 
-
-processThread = threading.Thread(target=dmxfonction, args=(dmxbuffer,))
-processThread.start()
-
-
-
 """Cette fonction connecte la rpi a la page web.
 Cette page web est stockee dans la rpi grace a Apache. L'adresse est donc 127.0.0.1.
 On parle a cette page grace un serveur Mosquitto, avec des messages MQTT."""
 def saisieCoordonnes():
-
     serveurTest.saisie_serveur("127.0.0.1")   #ici est ecrit l'adresse de la page
     serveurTest.saisie_port(int(1883))        #ici est ecrit le port MQTT (1883)
     serveurTest.saisie_login("root")          #ici le login...
@@ -75,10 +65,10 @@ def connection():
 
     #/*** DEFINITION DU SUJET ***/
     client.subscribe("general")
-    print("Connexion effectué.")
+    print("Connexion effectue.")
 
     client.loop_start()
-    print("Écoute du canal de conversation...")
+    print("Ecoute du canal de conversation...")
 
     # /*** INITIALISATION DE L'UNIVERS ET DES CANAUX***/
     global flag_univers
@@ -101,27 +91,25 @@ def initialisation_configuration(client):
 
         #/*** SI L'UTILISATEUR VEUT RECUPERER LES CONFIGURATION ***/
         if reponse == 1:
-            flag_configuration = True
-            while flag_configuration == True:
-                print("\nVoici les configurations qui ont ete enregistrees :")
-                time.sleep(1)
-                for i in range(len(configurations_remplies)):
-                    print(configurations_remplies[i])
+            print("\nVoici les configurations qui ont ete enregistrees :")
 
-                print("\nLaquelle de ces configurations voulez vous generer ?")
-                numero_configuration = int(input())
-                if numero_configuration in configurations_remplies:
-                    print("\nVous voulez generer l'ancienne configuration numero ", numero_configuration, ", est-ce exact ? [1 = Oui, 2 = Non]")
-                    reponse = int(input())
-                    if reponse == 1:
-                        print("Configuration numero", numero_configuration, "chargee !")
-                        #envoi_fichier_page(numero_configuration, client)
-                        enregistreur_configuration(numero_configuration)
-                        return (True)  # retour dans connectionEtEnvoi
+            for i in range(len(configurations_remplies)):
+                print(configurations_remplies[i])
+
+            print("\nLaquelle de ces configurations voulez vous generer ?")
+            numero_configuration = int(input())
+            if numero_configuration in configurations_remplies:
+                print("\nVous voulez generer l'ancienne configuration numero ", numero_configuration, ", est-ce exact ? [1 = Oui, 2 = Non]")
+                reponse = int(input())
+                if reponse == 1:
+                    print("Configuration numero", numero_configuration, "chargee !")
+                    #envoi_fichier_page(numero_configuration, client)
+                    enregistreur_configuration(numero_configuration)
+                    return (True)  # retour dans connectionEtEnvoi
 
 
     #/*** SI L'UTILISATEUR VEUT CREER UNE CONFIGURATION ***/
-    flag_configuration = True
+    flag_configuration=True
     while flag_configuration == True:
         print("\nQuelle configuration voulez vous creer ? (1, 2, 3, 4, 5, 6)")
         numero_configuration = int(input())
@@ -132,7 +120,6 @@ def initialisation_configuration(client):
                 configuration_actuelle = numero_configuration        #on met a jour le numero de la configuration actuelle
                 initialisation_univers(numero_configuration, client) #on va intialiser la nouvelle configuration toute neuv
                 return(True)                                         #on retourne dans connectionEtEnvoi
-
 
 """Cette fonction est appellee quand l'utilisateur doit entierement creer une configuration.
 -------------------------------------------------------------------------------------------
@@ -322,16 +309,6 @@ def envoyeur_dmx(matricule, valeur, identification):
     def_valeur = deformateur_de_valeur(valeur)
     dmxbuffer[def_matricule+1] = def_valeur
 
-
-
-
-
-
-
-
-
-
-
 def deformateur_de_valeur(valeur):
     deformatage = ""
     for i in range(len(valeur)):
@@ -423,6 +400,9 @@ def createur_nom(identification, condition):
             nom_fader = "F0" + str(condition)
         return (nom_fader)
 
+def stopThread(processThread):
+    processThread.join()
+
 
 class Serveur():
     def __init__(self, serveur, port, message, login, mdp):
@@ -462,6 +442,12 @@ class Serveur():
     def saisie_mdp(self, saisie):
         self.mdp = saisie
 
+################################################################################
+#                               INITIALISATION                                 #
+################################################################################
+
+processThread = threading.Thread(target=dmxfonction, args=(dmxbuffer,))
+processThread.start()
 
 serveurTest = Serveur("serveur", 0, "message", "login", "mdp")
 liste_fader = []
