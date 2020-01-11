@@ -10,6 +10,7 @@ void setup() {
   }
     dmxbuffer [0] = 255;      // Master at 100%
     dmxbuffer [1] = 255;      // Red at 100%
+    dmxbuffer [2] = 255;        // Green at 0%
     dmxbuffer [3] = 0;      // Blue at 100%
     dmxbuffer [4] = 0;        // Auto
     dmxbuffer [5] = 0;
