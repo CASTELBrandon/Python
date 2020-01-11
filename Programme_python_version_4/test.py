@@ -7,6 +7,8 @@ import serial
 import struct
 import threading
 
+#
+
 # Serial Setup for DMX transmission
 ser = serial.Serial(
     port='/dev/ttyAMA0',
@@ -41,7 +43,7 @@ Cette page web est stockee dans la rpi grace a Apache. L'adresse est donc 127.0.
 On parle a cette page grace un serveur Mosquitto, avec des messages MQTT."""
 def saisieCoordonnes():
     serveurTest.saisie_serveur("127.0.0.1")   #ici est ecrit l'adresse de la page
-    serveurTest.saisie_port(int(1883))        #ici est ecrit le port MQTT (1883)
+    serveurTest.saisie_port(int(8883))        #ici est ecrit le port MQTT (1883)
     serveurTest.saisie_login("root")          #ici le login...
     serveurTest.saisie_mdp("root")            #... et son mot de passe
 
@@ -60,15 +62,13 @@ def connection():
 
     #/*** CONNECTION ***/
     client.username_pw_set(login, mdp)
-    client.connect(serveur, port)
     client.on_message = on_message                            #appel de la fonction on_message() qui se lancera quand on recevra un message
+    client.on_disconnect = on_disconnect                      #Si on a une perte de la connexion
+    client.on_connect = on_connect
 
     #/*** DEFINITION DU SUJET ***/
-    client.subscribe("general")
-    print("Connexion effectue.")
-
-    client.loop_start()
-    print("Ecoute du canal de conversation...")
+    client.connect(serveur, port)
+    client.loop_start()                            #appel de la fonction on_message() qui se lancera quand on recevra un message
 
     # /*** INITIALISATION DE L'UNIVERS ET DES CANAUX***/
     global flag_univers
@@ -86,7 +86,7 @@ def initialisation_configuration(client):
     configurations_remplies = fdf.test_taille_fichier("initialisation", 0) #On regarde quelles configurations sont remplies ou vides.
 
     if len(configurations_remplies) != 0: #Si le tableau n'est pas vide
-        print("\n Le systeme vient de demarrer, voulez vous recuperer les anciennes configurations ? [1 = Oui, 2 = Non]")
+        print("\nLe systeme vient de demarrer, voulez vous recuperer les anciennes configurations ? [1 = Oui, 2 = Non]")
         reponse = int(input())
 
         #/*** SI L'UTILISATEUR VEUT RECUPERER LES CONFIGURATION ***/
@@ -106,20 +106,28 @@ def initialisation_configuration(client):
                     #envoi_fichier_page(numero_configuration, client)
                     enregistreur_configuration(numero_configuration)
                     return (True)  # retour dans connectionEtEnvoi
+                else:
+                    return (False)
+            else:
+                return (False)
 
 
-    #/*** SI L'UTILISATEUR VEUT CREER UNE CONFIGURATION ***/
-    flag_configuration=True
-    while flag_configuration == True:
-        print("\nQuelle configuration voulez vous creer ? (1, 2, 3, 4, 5, 6)")
-        numero_configuration = int(input())
-        if numero_configuration != 7:
-            print("\nVous voulez creer la configuration numero", numero_configuration, "est-ce exact ? [1 = Oui, 2 = Non]")
-            reponse = int(input())
-            if reponse == 1:
-                configuration_actuelle = numero_configuration        #on met a jour le numero de la configuration actuelle
-                initialisation_univers(numero_configuration, client) #on va intialiser la nouvelle configuration toute neuv
-                return(True)                                         #on retourne dans connectionEtEnvoi
+        #/*** SI L'UTILISATEUR VEUT CREER UNE CONFIGURATION ***/
+        else:
+            flag_configuration=True
+            while flag_configuration == True:
+                print("\nQuelle configuration voulez vous creer ? (1, 2, 3, 4, 5, 6)")
+                numero_configuration = int(input())
+                if numero_configuration != 7:
+                    print("\nVous voulez creer la configuration numero", numero_configuration, "est-ce exact ? [1 = Oui, 2 = Non]")
+                    reponse = int(input())
+                    if reponse == 1:
+                        configuration_actuelle = numero_configuration        #on met a jour le numero de la configuration actuelle
+                        initialisation_univers(numero_configuration, client) #on va intialiser la nouvelle configuration toute neuv
+                        return(True)                                         #on retourne dans connectionEtEnvoi
+
+    else:
+        return(False)
 
 """Cette fonction est appellee quand l'utilisateur doit entierement creer une configuration.
 -------------------------------------------------------------------------------------------
@@ -170,6 +178,32 @@ def initialisation_univers(configuration, client):
     else:
         return(False)
 
+def on_connect(client, userdata, flags, rc):
+    #rc : return code -> C'est un code qui verifie si la connexion a ete etablie
+    if rc == 0:
+        print("Connexion établie, code rc = ",rc)
+        client.subscribe("general")
+        print("Ecoute du canal de conversation...")
+
+        # /*** INITIALISATION DE L'UNIVERS ET DES CANAUX***/
+        initialisation_configuration(client)
+    elif rc == 1:
+        print("Connexion refusée - Version de protocol incorrect")
+    elif rc == 2:
+        print("Connexion refusée - Identifiant du client invalide")
+    elif rc == 3:
+        print("Connexion refusée - Serveur indisponible")
+    elif rc == 4:
+        print("Connexion refusée - Mauvais nom d'utilisateur ou mort de passe")
+    elif rc == 5:
+        print("Connexion refusée - Non autorisé")
+
+"""
+    Cette fonction informe l'utilisateur lorsqu'il y a eu une deconnexion au serveur mqtt
+"""
+def on_disconnect(client, userdate, rc=0):
+    print("Deconnexion du serveur MQTT...")
+    client.loop_stop()
 
 """Cette fonction s'active quand nous recevons un message MQTT de la part de la page web.
 Elle envoit ensuite le message vers la fonction traitement() pour agir en consequence de sa nomenclature.
