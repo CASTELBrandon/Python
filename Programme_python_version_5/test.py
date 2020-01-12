@@ -9,7 +9,7 @@ import threading
 
 # Serial Setup for DMX transmission
 ser = serial.Serial(
-    port='/dev/ttyS0',
+    port='/dev/ttyAMA0',
     baudrate = 250000,
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
@@ -28,15 +28,16 @@ master = 0
 def dmxfonction(dmxbuffer):
     global universize
     global master
+    dmxbuffer[0] = master
     tosend=dmxbuffer
-    dmxbuffer[1] = master
-    #print(tosend)
-    ser.break_condition = True
-    time.sleep(0.001)               # Send Break
-    ser.break_condition = False
-    #ser.write(struct.pack('<B', 0)) # Start Code
-    for i in range(0, universize, 1):
-        ser.write(struct.pack('<B', tosend[i]))
+    print("Envoi de la valeur tosend : {}".format(tosend[0]))
+    while True:
+        ser.break_condition = True
+        time.sleep(0.1)               # Send Break
+        ser.break_condition = False
+        #ser.write(struct.pack('<B', 0)) # Start Code
+        for i in range(0, universize, 1):
+            ser.write(struct.pack('<B', tosend[i]))
 
 
 processThread = threading.Thread(target=dmxfonction, args=(dmxbuffer,))
@@ -70,22 +71,20 @@ def connection():
     #/*** CONNECTION ***/
     client.username_pw_set(login, mdp)
     client.connect(serveur, port)
-    client.loop_start()
     client.on_message = on_message                            #appel de la fonction on_message() qui se lancera quand on recevra un message
 
     #/*** DEFINITION DU SUJET ***/
     client.subscribe("general")
+    print("Connexion effectué.")
+
+    client.loop_start()
+    print("Écoute du canal de conversation...")
 
     # /*** INITIALISATION DE L'UNIVERS ET DES CANAUX***/
     global flag_univers
     while flag_univers != True:
         flag_univers = initialisation_configuration(client)
     flag_univers = False
-
-    # /*** BOUCLE DE CONNECTION ***/
-    i = "Initialisation"
-    while i != "stop":
-        pass
 
 
 """Cette fonction demande a l'utilisateur s'il veut charger ou non les anciennes configurations enregistrees.
